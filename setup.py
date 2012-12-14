@@ -2,7 +2,10 @@ from distutils.core import setup
 from distutils.extension import Extension
 from Cython.Distutils import build_ext
 
-ext_modules = [Extension("svmlight", ["svmlight.pyx"])]
+ext_modules = [
+    Extension("svmlight",
+              ["src/svmlight.pyx"],
+              include_dirs=["lib/"])]
 
 setup(
   name = 'Hello world app',
