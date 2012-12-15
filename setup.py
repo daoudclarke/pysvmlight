@@ -4,8 +4,8 @@ from Cython.Distutils import build_ext
 
 ext_modules = [
     Extension("svmlight",
-              ["src/svmlight.pyx"],
-              include_dirs=["lib/"])]
+              ["src/svmlight.pyx", "lib/svm_common.c"],
+              include_dirs = ["lib"])]
 
 setup(
   name = 'Hello world app',
