@@ -177,7 +177,13 @@ cdef class SupportVector:
 
     def __cinit__(self, python_words):
         self.size = len(python_words)
-        cdef WORD* words = <WORD*>malloc(sizeof(WORD) * self.size)
+        # List must be increasing and terminated by 0
+        if 0 in python_words:
+            raise ValueError("Word number must be nonzero")
+        python_words = list(python_words)
+        python_words.sort()
+        python_words += [0]
+        cdef WORD* words = <WORD*>malloc(sizeof(WORD) * len(python_words))
         cdef int i = 0
         for word in python_words:
             words[i].wnum = word
