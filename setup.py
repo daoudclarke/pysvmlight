@@ -1,6 +1,7 @@
 from distutils.core import setup
 from distutils.extension import Extension
 from Cython.Distutils import build_ext
+from disttest import test
 
 ext_modules = [
     Extension("svmlight",
@@ -9,6 +10,8 @@ ext_modules = [
 
 setup(
   name = 'Hello world app',
-  cmdclass = {'build_ext': build_ext},
-  ext_modules = ext_modules
+  cmdclass = {'build_ext': build_ext,
+              'test' : test},
+  ext_modules = ext_modules,
+  options = {'test' : {'test_dir':['test']}}
 )
