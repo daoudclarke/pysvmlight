@@ -5,7 +5,11 @@ from disttest import test
 
 ext_modules = [
     Extension("svmlight",
-              ["src/svmlight.pyx", "lib/svm_common.c"],
+              ["src/svmlight.pyx",
+               "lib/svm_common.c",
+               "lib/svm_learn.c",
+               "lib/svm_hideo.c"
+               ],
               include_dirs = ["lib"])]
 
 setup(

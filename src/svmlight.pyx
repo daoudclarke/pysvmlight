@@ -156,7 +156,7 @@ cdef LEARN_PARM get_default_learn_parm():
     learn_parm.xa_depth=0
     return learn_parm
 
-cdef get_default_kernel_parm():
+cdef KERNEL_PARM get_default_kernel_parm():
     cdef KERNEL_PARM parm
     parm.kernel_type=0
     parm.poly_degree=3
@@ -192,7 +192,7 @@ cdef class SupportVector:
         self.svector = create_svector(words, "", 1.0)
 
     def __repr__(self):
-        values = ",".join([
+        values = ", ".join([
                 str(self.svector.words[i].wnum)
                 for i in range(self.size)])
         return "SupportVector([%s])" % values
@@ -200,8 +200,143 @@ cdef class SupportVector:
     def __len__(self):
         return self.size
 
+    def __iter__(self):
+        for i in range(len(self)):
+            yield self.svector.words[i].wnum
+
     def __dealloc__(self):
         if self.svector is not NULL:
             free_svector(self.svector)
     
+cdef class Document:
+    cdef DOC _doc
+    cdef object _vector
+
+    def __cinit__(self, docnum, vector):
+        self._doc.docnum = docnum
+        self._doc.fvec = (<SupportVector?>vector).svector
+        self._doc.queryid = 0
+        self._doc.slackid = 0
+        self._doc.costfactor = 1.0
+        self._vector = vector
+
+    property docnum:
+        def __get__(self):
+            return self._doc.docnum
+
+    property vector:
+        def __get__(self):
+            return self._vector
+
+    def __repr__(self):
+        return "Document(%d, %s)" % (self._doc.docnum, self._vector.__repr__())
+
+# cdef class DocumentList:
+#     cdef DOC** _documents
+    
+#     def __cinit__(self, documents):
+#         self._documents = <DOC**>malloc(sizeof(DOC*)*len(documents))
+#         for i in range(len(documents)):
+#             self._documents[i] = &(<Document?>(documents[i]))._doc
+   
+#     def __dealloc__(self):
+#         if (self._documents):
+#             free(self._documents)
+
+class DocumentFactory:
+    def __init__(self):
+        self.nums = {}
+        self.max_num = 0
+        self.max_doc_id = 0
+
+    def new(self, items):
+        v = []
+        for i in items:
+            if not i in self.nums:
+                self.max_num += 1
+                self.nums[i] = self.max_num
+            v.append(self.nums[i])
+        vector = SupportVector(v)
+        self.max_doc_id += 1
+        return Document(self.max_doc_id, vector)
+        
+
+cdef class Model:
+    # struct model:
+    #     long sv_num
+    #     long at_upper_bound
+    #     double b
+    #     DOC **supvec
+    #     double *alpha
+    #     long *index
+    #     long totwords
+    #     long totdoc
+    #     KERNEL_PARM kernel_parm
+    #     double loo_error,loo_recall,loo_precision
+    #     double  xa_error,xa_recall,xa_precision
+    #     double  *lin_weights
+    #     double  maxdiff
+    # ctypedef model MODEL
+    cdef MODEL _model
+    cdef bint _initialised
+
+    def __cinit__(self):
+        _initialised = False
+
+    property bias:
+        def __get__(self):
+            if self._initialised:
+                return self._model.b
+            else:
+                raise ValueError("Model is invalid")
+
+    property num_docs:
+        def __get__(self):
+            if self._initialised:
+                return self._model.totdoc
+            else:
+                raise ValueError("Model is invalid")
+
+cdef class Learner:
+    cdef LEARN_PARM _parameters
+    cdef KERNEL_PARM _kernel_parameters
+    cdef KERNEL_CACHE _kernel_cache
+
+    def __cinit__(self):
+        self._parameters = get_default_learn_parm()
+        self._kernel_parameters = get_default_kernel_parm()
+
+    property biased_hyperplane:
+        def __get__(self):
+            return [False,True][self._parameters.biased_hyperplane]
+
+        def __set__(self, value):
+            self._parameters.biased_hyperplane = {False:0, True:1}[value]
+
+    def learn(self, documents, class_values):
+        cdef Model model = Model()
+        cdef DOC** docs = <DOC**>malloc(sizeof(DOC*)*len(documents))
+        for i in range(len(documents)):
+            docs[i] = &(<Document?>(documents[i]))._doc
+
+        cdef double* class_ = <double*>malloc(sizeof(double)*len(class_values))
+        for i in range(len(class_values)):
+            class_[i] = class_values[i]
+
+        cdef long int totwords = max([max(x.vector) for x in documents])
+        svm_learn_classification(docs, class_, len(documents),
+                                 totwords, 
+                                 &self._parameters, 
+                                 &self._kernel_parameters, 
+                                 &self._kernel_cache, 
+                                 &model._model,
+                                 NULL)
+        
+        free(class_)
+        free(docs)
+        model._initialised = True
+        return model
+
+    def __repr__(self):
+        return "Learner(biased_hyperplane=%s)" % str(self.biased_hyperplane)
 
