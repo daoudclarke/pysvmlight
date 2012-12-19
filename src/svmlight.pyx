@@ -3,6 +3,7 @@
 # Cython wrapper around svmlight
 
 from libc.stdlib cimport malloc, free
+from libc.string cimport strcpy
 
 cdef extern from "svm_common.h":
     struct word:
@@ -154,6 +155,8 @@ cdef LEARN_PARM get_default_learn_parm():
     learn_parm.compute_loo=0
     learn_parm.rho=1.0
     learn_parm.xa_depth=0
+    strcpy(learn_parm.alphafile,"")
+    strcpy(learn_parm.predfile,"trans_predictions")
     return learn_parm
 
 cdef KERNEL_PARM get_default_kernel_parm():
