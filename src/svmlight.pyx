@@ -284,7 +284,13 @@ cdef class Model:
     cdef bint _initialised
 
     def __cinit__(self):
-        _initialised = False
+        self._initialised = False
+        self._model.alpha = NULL
+        self._model.index = NULL
+        self._model.lin_weights = NULL
+
+    cdef void initialise(self):
+        self._initialised = True
 
     property bias:
         def __get__(self):
@@ -299,6 +305,15 @@ cdef class Model:
                 return self._model.totdoc
             else:
                 raise ValueError("Model is invalid")
+
+    def __dealloc__(self):
+        if self._model.alpha:
+            free(self._model.alpha)
+        if self._model.lin_weights:
+            free(self._model.lin_weights)
+        if self._model.index:
+            free(self._model.index)
+                 
 
 cdef class Learner:
     cdef LEARN_PARM _parameters
@@ -337,7 +352,7 @@ cdef class Learner:
         
         free(class_)
         free(docs)
-        model._initialised = True
+        model.initialise()
         return model
 
     def __repr__(self):
