@@ -17,8 +17,8 @@ class DocumentFactoryTestCase(unittest.TestCase):
         d1 = factory.new(['a','b','c'])
         d2 = factory.new(['b','d','e'])
         print factory.nums
-        self.assertEqual('Document(1, SupportVector([1, 2, 3]))', str(d1))
-        self.assertEqual('Document(2, SupportVector([2, 4, 5]))', str(d2))
+        self.assertEqual('Document(1, SupportVector({1: 1.0, 2: 1.0, 3: 1.0}))', str(d1))
+        self.assertEqual('Document(2, SupportVector({2: 1.0, 4: 1.0, 5: 1.0}))', str(d2))
     
 if __name__ == '__main__':
     unittest.main()

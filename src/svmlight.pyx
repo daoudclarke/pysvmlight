@@ -123,6 +123,7 @@ cdef extern from "svm_common.h":
     cdef SVECTOR *create_svector(WORD *, char *, double)
     cdef void free_svector(SVECTOR *)
     cdef SVECTOR *copy_svector(SVECTOR *vec)
+    cdef void add_weight_vector_to_linear_model(MODEL *model)
 
 cdef extern from "svm_learn.h":
     void svm_learn_classification(DOC **docs, double *class_, long int
@@ -168,12 +169,6 @@ cdef KERNEL_PARM get_default_kernel_parm():
     parm.coef_const=1
     return parm
 
-def test_range(r):
-    cdef int ii
-    for i in r:
-        ii = i
-        print ii
-
 cdef class SupportVector:
     cdef SVECTOR* svector
 
@@ -183,28 +178,39 @@ cdef class SupportVector:
         self.svector = NULL
         if python_words is None:
             return
-        cdef int size = len(python_words)
         # List must be increasing and terminated by 0
-        if 0 in python_words:
-            raise ValueError("Word number must be nonzero")
+        for word in python_words:
+            if word[0] == 0:
+                raise ValueError("Word number must be nonzero")
+
         python_words = list(python_words)
         python_words.sort()
-        python_words += [0]
+        python_words += [(0,0.)]
         cdef WORD* words = <WORD*>malloc(sizeof(WORD) * len(python_words))
         cdef int i = 0
         for word in python_words:
-            words[i].wnum = word
-            words[i].weight = 1.0
+            words[i].wnum = word[0]
+            words[i].weight = word[1]
             i += 1
         self.svector = create_svector(words, "", 1.0)
+
+    property factor:
+        def __get__(self):
+            if not self.svector:
+                raise ValueError("Support vector is None")
+            return self.svector.factor
+
+        def __set__(self, value):
+            if not self.svector:
+                raise ValueError("Support vector is None")
+            self.svector.factor = value
 
     def __repr__(self):
         if not self.svector:
             return "SupportVector(None)"
-        values = ", ".join([
-                str(self.svector.words[i].wnum)
-                for i in range(len(self))])
-        return "SupportVector([%s])" % values
+        if self.factor == 1.0:
+            return "SupportVector(%s)" % dict(self).__repr__()            
+        return "%f*SupportVector(%s)" % (self.factor, dict(self).__repr__())
 
     def __len__(self):
         if not self.svector:
@@ -218,7 +224,7 @@ cdef class SupportVector:
         if not self.svector:
             raise ValueError("Support vector is None")
         for i in range(len(self)):
-            yield self.svector.words[i].wnum
+            yield (self.svector.words[i].wnum, self.svector.words[i].weight)
 
     def __dealloc__(self):
         if self.svector is not NULL:
@@ -259,7 +265,7 @@ class DocumentFactory:
             if not i in self.nums:
                 self.max_num += 1
                 self.nums[i] = self.max_num
-            v.append(self.nums[i])
+            v.append( (self.nums[i], 1.) )
         vector = SupportVector(v)
         self.max_doc_id += 1
         return Document(self.max_doc_id, vector)
@@ -283,19 +289,20 @@ cdef class Model:
     # ctypedef model MODEL
     cdef MODEL _model
     cdef bint _initialised
-    cdef object _support_vectors
+    cdef object _plane
 
     def __cinit__(self):
         self._initialised = False
         self._model.alpha = NULL
         self._model.index = NULL
         self._model.lin_weights = NULL
-        self._support_vectors = []
+        self._plane = None
 
     cdef void initialise(self):
-        for i in range(self._model.totdoc):
-            s = SupportVector(None)
-        self._support_vectors.append(SupportVector([]))
+        cdef SupportVector s
+        self._plane = []
+        for i in range(1, self._model.totwords + 1):
+            self._plane.append(self._model.lin_weights[i])
         self._initialised = True
 
     property bias:
@@ -312,9 +319,9 @@ cdef class Model:
             else:
                 raise ValueError("Model is invalid")
 
-    property support_vectors:
+    property plane:
         def __get__(self):
-            return self._support_vectors
+            return self._plane
 
     def __dealloc__(self):
         if self._model.alpha:
@@ -336,10 +343,27 @@ cdef class Learner:
     property biased_hyperplane:
         def __get__(self):
             return [False,True][self._parameters.biased_hyperplane]
-
         def __set__(self, value):
             self._parameters.biased_hyperplane = {False:0, True:1}[value]
 
+    property cost:
+        def __get__(self):
+            return self._parameters.svm_c
+        def __set__(self, value):
+            self._parameters.svm_c = value
+
+    property cost_ratio:
+        def __get__(self):
+            return self._parameters.svm_costratio
+        def __set__(self, value):
+            self._parameters.svm_costratio = value
+
+    property remove_inconsistent:
+        def __get__(self):
+            return [False,True][self._parameters.remove_inconsistent]
+        def __set__(self, value):
+            self._parameters.remove_inconsistent = {False:0, True:1}[value]
+        
     def learn(self, documents, class_values):
         cdef Model model = Model()
         cdef DOC** docs = <DOC**>malloc(sizeof(DOC*)*len(documents))
@@ -350,7 +374,7 @@ cdef class Learner:
         for i in range(len(class_values)):
             class_[i] = class_values[i]
 
-        cdef long int totwords = max([max(x.vector) for x in documents])
+        cdef long int totwords = max([max([y[0] for y in x.vector]) for x in documents])
         svm_learn_classification(docs, class_, len(documents),
                                  totwords, 
                                  &self._parameters, 
@@ -361,6 +385,7 @@ cdef class Learner:
         
         free(class_)
         free(docs)
+        add_weight_vector_to_linear_model(&model._model)
         model.initialise()
         return model
 
