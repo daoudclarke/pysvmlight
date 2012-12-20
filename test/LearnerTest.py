@@ -2,7 +2,7 @@
 
 import unittest
 
-from svmlight import Learner, DocumentFactory
+from svmlight import Learner, DocumentFactory, SupportVector
 
 class LearnerTestCase(unittest.TestCase):
     def testConstruction(self):
@@ -27,7 +27,7 @@ class LearnerTestCase(unittest.TestCase):
         model = l.learn(docs, [1, 1, 1, -1, -1])
         print model
         self.assertEqual(5, model.num_docs)
-        self.assertEqual("<type 'SupportVector'>", model.support_vectors[0])
+        self.assertEqual(SupportVector, type(model.support_vectors[0]))
     
 if __name__ == '__main__':
     unittest.main()

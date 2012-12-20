@@ -122,7 +122,7 @@ cdef extern from "svm_common.h":
 
     cdef SVECTOR *create_svector(WORD *, char *, double)
     cdef void free_svector(SVECTOR *)
-
+    cdef SVECTOR *copy_svector(SVECTOR *vec)
 
 cdef extern from "svm_learn.h":
     void svm_learn_classification(DOC **docs, double *class_, long int
@@ -176,10 +176,14 @@ def test_range(r):
 
 cdef class SupportVector:
     cdef SVECTOR* svector
-    cdef public int size
 
     def __cinit__(self, python_words):
-        self.size = len(python_words)
+        # Initialise this first in case we encounter an error
+        # This prevents a rubbish value being freed on destruction
+        self.svector = NULL
+        if python_words is None:
+            return
+        cdef int size = len(python_words)
         # List must be increasing and terminated by 0
         if 0 in python_words:
             raise ValueError("Word number must be nonzero")
@@ -195,15 +199,24 @@ cdef class SupportVector:
         self.svector = create_svector(words, "", 1.0)
 
     def __repr__(self):
+        if not self.svector:
+            return "SupportVector(None)"
         values = ", ".join([
                 str(self.svector.words[i].wnum)
-                for i in range(self.size)])
+                for i in range(len(self))])
         return "SupportVector([%s])" % values
 
     def __len__(self):
-        return self.size
+        if not self.svector:
+            raise ValueError("Support vector is None")
+        cdef int size = 0
+        while(self.svector.words[size].wnum):
+            size += 1
+        return size
 
     def __iter__(self):
+        if not self.svector:
+            raise ValueError("Support vector is None")
         for i in range(len(self)):
             yield self.svector.words[i].wnum
 
@@ -233,18 +246,6 @@ cdef class Document:
 
     def __repr__(self):
         return "Document(%d, %s)" % (self._doc.docnum, self._vector.__repr__())
-
-# cdef class DocumentList:
-#     cdef DOC** _documents
-    
-#     def __cinit__(self, documents):
-#         self._documents = <DOC**>malloc(sizeof(DOC*)*len(documents))
-#         for i in range(len(documents)):
-#             self._documents[i] = &(<Document?>(documents[i]))._doc
-   
-#     def __dealloc__(self):
-#         if (self._documents):
-#             free(self._documents)
 
 class DocumentFactory:
     def __init__(self):
@@ -282,14 +283,19 @@ cdef class Model:
     # ctypedef model MODEL
     cdef MODEL _model
     cdef bint _initialised
+    cdef object _support_vectors
 
     def __cinit__(self):
         self._initialised = False
         self._model.alpha = NULL
         self._model.index = NULL
         self._model.lin_weights = NULL
+        self._support_vectors = []
 
     cdef void initialise(self):
+        for i in range(self._model.totdoc):
+            s = SupportVector(None)
+        self._support_vectors.append(SupportVector([]))
         self._initialised = True
 
     property bias:
@@ -306,6 +312,10 @@ cdef class Model:
             else:
                 raise ValueError("Model is invalid")
 
+    property support_vectors:
+        def __get__(self):
+            return self._support_vectors
+
     def __dealloc__(self):
         if self._model.alpha:
             free(self._model.alpha)
@@ -313,7 +323,6 @@ cdef class Model:
             free(self._model.lin_weights)
         if self._model.index:
             free(self._model.index)
-                 
 
 cdef class Learner:
     cdef LEARN_PARM _parameters

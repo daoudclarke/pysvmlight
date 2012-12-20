@@ -24,6 +24,18 @@ class SupportVectorTestCase(unittest.TestCase):
         s = SupportVector([1,2,3])
         vals = [x for x in s]
         self.assertEqual(str(vals), "[1, 2, 3]")
+
+    def testNoneVector(self):
+        self.assertEqual(str(SupportVector(None)),
+                         "SupportVector(None)")
+
+    def testNoneVectorLengthError(self):
+        s = SupportVector(None)
+        self.assertRaises(ValueError, len, s)
+
+    def testNoneVectorListError(self):
+        s = SupportVector(None)
+        self.assertRaises(ValueError, list, s)
     
 if __name__ == '__main__':
     unittest.main()
