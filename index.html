@@ -31,7 +31,35 @@
     <!-- MAIN CONTENT -->
     <div id="main_content_wrap" class="outer">
       <section id="main_content" class="inner">
-        <h1>Building from source</h1>
+        <h1>pysvmlight</h1>
+
+<p>Bismillahi-r-Rahmani-r-Rahim</p>
+
+<p>In the Name of God, the Merciful, the Compassionate</p>
+
+<p>This is a wrapper for the svmlight library. It allows you to specify
+an unbiased hyperplane. It also allows you to access the learnt
+hyperplane after training.</p>
+
+<p>See the svmlight website (<a href="http://svmlight.joachims.org/">http://svmlight.joachims.org/</a>) for full
+details. </p>
+
+<p>Example of use:</p>
+
+<div class="highlight"><pre><span class="o">&gt;&gt;&gt;</span> <span class="n">f</span> <span class="o">=</span> <span class="n">DocumentFactory</span><span class="p">()</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">docs</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">split</span><span class="p">())</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="p">[</span>
+<span class="o">...</span>         <span class="s">"this is a nice long document"</span><span class="p">,</span>
+<span class="o">...</span>         <span class="s">"this is another nice long document"</span><span class="p">,</span>
+<span class="o">...</span>         <span class="s">"this is rather a short document"</span><span class="p">,</span>
+<span class="o">...</span>         <span class="s">"a horrible document"</span><span class="p">,</span>
+<span class="o">...</span>         <span class="s">"another horrible document"</span><span class="p">]]</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">l</span> <span class="o">=</span> <span class="n">Learner</span><span class="p">()</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">model</span> <span class="o">=</span> <span class="n">l</span><span class="o">.</span><span class="n">learn</span><span class="p">(</span><span class="n">docs</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">judgments</span> <span class="o">=</span> <span class="p">[</span><span class="n">model</span><span class="o">.</span><span class="n">classify</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">docs</span><span class="p">]</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="k">print</span> <span class="n">model</span><span class="o">.</span><span class="n">plane</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">bias</span>
+</pre></div>
+
+<h1>Building from source</h1>
 
 <p>Building requires Cython to be installed. Type</p>
 
@@ -44,31 +72,31 @@ $ python setup.py install
 <h1>License</h1>
 
 <p>The original svmlight code is included in the lib directory for ease
-of building. This code is Copyright (c) 2002 Thorsten Joachims - All<br>
-rights reserved.                                                                                                                                       </p>
+of building. This code is Copyright (c) 2002 Thorsten Joachims - All
+rights reserved.</p>
 
-<p>The cython code in the src directory is released under the MIT<br>
-license:                                                                                                                                               </p>
+<p>The cython code in the src directory is released under the MIT
+license:</p>
 
-<p>Copyright (c) 2012 Daoud Clarke                                                                                                                        </p>
+<p>Copyright (c) 2012 Daoud Clarke</p>
 
-<p>Permission is hereby granted, free of charge, to any person obtaining<br>
-a copy of this software and associated documentation files (the<br>
-"Software"), to deal in the Software without restriction, including<br>
-without limitation the rights to use, copy, modify, merge, publish,<br>
-distribute, sublicense, and/or sell copies of the Software, and to<br>
-permit persons to whom the Software is furnished to do so, subject to<br>
-the following conditions:                                                                                                                              </p>
+<p>Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:</p>
 
-<p>The above copyright notice and this permission notice shall be<br>
+<p>The above copyright notice and this permission notice shall be
 included in all copies or substantial portions of the Software.</p>
 
-<p>THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,<br>
-EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF<br>
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND<br>
-NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE<br>
-LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION<br>
-OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION<br>
+<p>THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</p>
       </section>
     </div>
