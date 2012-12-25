@@ -1,6 +1,26 @@
-# Bismillahi-r-Rahmani-r-Rahim
-#
-# Cython wrapper around svmlight
+"""
+Bismillahi-r-Rahmani-r-Rahim
+In the Name of God, the Merciful, the Compassionate
+
+This is a wrapper for the svmlight library. It allows you to specify
+an unbiased hyperplane. It also allows you to access the learnt
+hyperplane after training.
+
+Example of use:
+
+>>> f = DocumentFactory()
+>>> docs = [f.new(x.split()) for x in [
+...         "this is a nice long document",
+...         "this is another nice long document",
+...         "this is rather a short document",
+...         "a horrible document",
+...         "another horrible document"]]
+>>> l = Learner()
+>>> model = l.learn(docs, [1, 1, 1, -1, -1])
+>>> judgments = [model.classify(d) for d in docs]
+>>> print model.plane, model.bias
+
+"""
 
 from libc.stdlib cimport malloc, free
 from libc.string cimport strcpy
@@ -124,6 +144,7 @@ cdef extern from "svm_common.h":
     cdef void free_svector(SVECTOR *)
     cdef SVECTOR *copy_svector(SVECTOR *vec)
     cdef void add_weight_vector_to_linear_model(MODEL *model)
+    double classify_example(MODEL *model, DOC *ex) 
 
 cdef extern from "svm_learn.h":
     void svm_learn_classification(DOC **docs, double *class_, long int
@@ -170,6 +191,7 @@ cdef KERNEL_PARM get_default_kernel_parm():
     return parm
 
 cdef class SupportVector:
+    """Vector class used as a representation of the contents of a document."""
     cdef SVECTOR* svector
 
     def __cinit__(self, python_words):
@@ -231,10 +253,19 @@ cdef class SupportVector:
             free_svector(self.svector)
     
 cdef class Document:
+    """A document consists of a docnum (ID) and a SupportVector
+    representing its contents."""
     cdef DOC _doc
     cdef object _vector
 
     def __cinit__(self, docnum, vector):
+        """Create a Document
+
+        Arguments:
+        docnum -- integer document identifier
+        vector -- a SupportVector representing the document
+
+        """
         self._doc.docnum = docnum
         self._doc.fvec = (<SupportVector?>vector).svector
         self._doc.queryid = 0
@@ -243,10 +274,12 @@ cdef class Document:
         self._vector = vector
 
     property docnum:
+        """Document identifier"""
         def __get__(self):
             return self._doc.docnum
 
     property vector:
+        """SupportVector of document contents"""
         def __get__(self):
             return self._vector
 
@@ -254,6 +287,7 @@ cdef class Document:
         return "Document(%d, %s)" % (self._doc.docnum, self._vector.__repr__())
 
 class DocumentFactory:
+    """A class for easily creating documents"""
     def __init__(self):
         self.nums = {}
         self.max_num = 0
@@ -272,21 +306,8 @@ class DocumentFactory:
         
 
 cdef class Model:
-    # struct model:
-    #     long sv_num
-    #     long at_upper_bound
-    #     double b
-    #     DOC **supvec
-    #     double *alpha
-    #     long *index
-    #     long totwords
-    #     long totdoc
-    #     KERNEL_PARM kernel_parm
-    #     double loo_error,loo_recall,loo_precision
-    #     double  xa_error,xa_recall,xa_precision
-    #     double  *lin_weights
-    #     double  maxdiff
-    # ctypedef model MODEL
+    """A SVM model. A valid Model can only be obtained by calling the
+    learn() method of the Learner class."""
     cdef MODEL _model
     cdef bint _initialised
     cdef object _plane
@@ -305,7 +326,15 @@ cdef class Model:
             self._plane.append(self._model.lin_weights[i])
         self._initialised = True
 
+    def classify(self, doc):
+        """Classify a Document using the model. Returns a double
+        value; if this is greater than zero, the classifier considers
+        the document to belong to the positive class, otherwise the
+        negative class."""
+        return classify_example(&self._model, &(<Document?>doc)._doc) 
+
     property bias:
+        """The bias of the learnt model."""
         def __get__(self):
             if self._initialised:
                 return self._model.b
@@ -320,6 +349,8 @@ cdef class Model:
                 raise ValueError("Model is invalid")
 
     property plane:
+        """Return the vector normal to the learnt hyperplane as a list
+        of floating point values."""
         def __get__(self):
             return self._plane
 
@@ -332,6 +363,7 @@ cdef class Model:
             free(self._model.index)
 
 cdef class Learner:
+    """Used to specify parameters and learn a SVM model."""
     cdef LEARN_PARM _parameters
     cdef KERNEL_PARM _kernel_parameters
     cdef KERNEL_CACHE _kernel_cache
@@ -341,30 +373,52 @@ cdef class Learner:
         self._kernel_parameters = get_default_kernel_parm()
 
     property biased_hyperplane:
+        """
+        Use biased hyperplane (i.e. x*w+b0) instead of unbiased
+        hyperplane (i.e. x*w0) (default 1).
+        """
         def __get__(self):
             return [False,True][self._parameters.biased_hyperplane]
         def __set__(self, value):
             self._parameters.biased_hyperplane = {False:0, True:1}[value]
 
     property cost:
+        """
+        Specify the cost of misclassification: trade-off between
+        training error and margin (default 1/[avg. x*x]).
+        """
         def __get__(self):
             return self._parameters.svm_c
         def __set__(self, value):
             self._parameters.svm_c = value
 
     property cost_ratio:
+        """
+        Cost-factor, by which training errors on positive examples
+        outweight errors on negative examples (default 1) (see
+        [Morik et al., 1999]).
+        """
         def __get__(self):
             return self._parameters.svm_costratio
         def __set__(self, value):
             self._parameters.svm_costratio = value
 
     property remove_inconsistent:
+        """
+        Remove inconsistent training examples and retrain (default 0).
+        """
         def __get__(self):
             return [False,True][self._parameters.remove_inconsistent]
         def __set__(self, value):
             self._parameters.remove_inconsistent = {False:0, True:1}[value]
         
     def learn(self, documents, class_values):
+        """Learn a SVM Model.
+
+        Arguments:
+        documents -- an iterator over Document instances
+        class_values -- an iterator over class values in {-1, 1}
+        """
         cdef Model model = Model()
         cdef DOC** docs = <DOC**>malloc(sizeof(DOC*)*len(documents))
         for i in range(len(documents)):
